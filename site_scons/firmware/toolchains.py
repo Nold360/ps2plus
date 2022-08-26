@@ -24,7 +24,7 @@ class NativeToolchain(AbstractFirmwareToolchain):
                 'm', # Link the math library for <math.h>
             ]
         )
-    
+
 class MicrochipXC8Toolchain(AbstractFirmwareToolchain):
     name = 'MicrochipXC8Toolchain'
 
@@ -91,6 +91,12 @@ class MicrochipXC8Toolchain(AbstractFirmwareToolchain):
                 '_PIC18',
                 '__PICC18__',
             ]
+        elif mcu.startswith('PIC16'):
+            self.vscode_properties.additional_defines += [
+                '_PIC16',
+                '__PICC16__',
+            ]
+
 
         # Point VS Code to the underlying clang executable so its IntelliSense is accurate (and doesn't default to MSVC)
         self.vscode_properties.compiler_path = self.xc8_clang
@@ -103,14 +109,14 @@ class MicrochipXC8Toolchain(AbstractFirmwareToolchain):
             '-Wl,--data-init',          # Clearing and initialization of C objects at runtime startup
             '-mdefault-config-bits',    # Used to have the compiler program default values for those configuration bits that have not been specified in the code using the config pragma
         ])
-        
+
         env.Replace(
             CC=self.xc8_driver,
             CCFLAGS=xc8_flags,
             OBJSUFFIX='.p1',
             LINK=self.xc8_driver,
             LINKFLAGS=xc8_flags,
-            
+
             # Even though XC8 generates ELFs as the main executable, we really only
             # care about the HEX file it also generates as this is used for flashing.
             PROGSUFFIX='.hex',
@@ -124,7 +130,7 @@ class MicrochipXC8Toolchain(AbstractFirmwareToolchain):
         self.xc8_directory = os.path.dirname(os.path.dirname(shutil.which('xc8-cc') or ''))
         self.xc8_driver = f"\"{os.path.join(self.xc8_directory, 'bin', 'xc8-cc')}\""
         self.xc8_clang = os.path.join(self.xc8_directory, 'pic', 'bin', 'clang')
-        
+
         # TODO: Make toolchains optional (for other platforms), but fail the build when required?
         # if not self.xc8_directory:
         #     raise Exception('Could not find `xc8-cc[.exe]` on the path')

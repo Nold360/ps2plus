@@ -58,8 +58,8 @@ class NativePlatform(AbstractFirmwarePlatform):
 
                 # Execute gcovr to generate the coverage report from gcov
                 coverage_command = [
-                    'gcovr', 
-                    '--exclude=firmware/test', 
+                    'gcovr',
+                    '--exclude=firmware/test',
                     '--print-summary',
                     '--html-details=' + coverage_report,
                     f'--html-title=PS2+ Code Coverage - Platform: {self.name} - Target: {target.name}',
@@ -70,6 +70,34 @@ class NativePlatform(AbstractFirmwarePlatform):
                 print('Unable to run coverage report due to missing `gcovr` executable')
 
         return ret
+
+class PIC16F18876Platform(AbstractFirmwarePlatform):
+    name = 'PIC16F18876'
+    toolchain = toolchains.MicrochipXC8Toolchain('PIC16F18876')
+    valid_targets = [targets.BootloaderTarget, targets.FirmwareTarget]
+
+    mplab_configurations = []
+
+    def setup_env_for_target(self, env, target):
+        if target == targets.BootloaderTarget:
+            # Restrict the program memory range to the first 0x4000 bytes
+            env.Append(LINKFLAGS=' -mrom=0000-3FFF')
+        elif target == targets.FirmwareTarget:
+            # Set the offset of program memory to 0x4000
+            env.Append(LINKFLAGS=' -mcodeoffset=0x4000')
+
+    def generate_ide_project_configuration_for_target(self, env, target):
+        self.mplab_configurations.append(
+            env.MplabxNbprojectConfiguration(
+                name=f'{target.name}_{self.name}',
+                properties=self.toolchain.mplabx_properties,
+                additional_linker_properties={
+                    'additional-options-code-offset': '0x4000' if target == targets.FirmwareTarget else '0x0000',
+                    'code-model-rom': '0000-3FFF' if target == targets.BootloaderTarget else '',
+                },
+            )
+        )
+
 
 class PIC18F46K42Platform(AbstractFirmwarePlatform):
     name = 'PIC18F46K42'
@@ -90,7 +118,7 @@ class PIC18F46K42Platform(AbstractFirmwarePlatform):
         self.mplab_configurations.append(
             env.MplabxNbprojectConfiguration(
                 name=f'{target.name}_{self.name}',
-                properties=self.toolchain.mplabx_properties,       
+                properties=self.toolchain.mplabx_properties,
                 additional_linker_properties={
                     'additional-options-code-offset': '0x4000' if target == targets.FirmwareTarget else '0x0000',
                     'code-model-rom': '0000-3FFF' if target == targets.BootloaderTarget else '',
@@ -100,11 +128,12 @@ class PIC18F46K42Platform(AbstractFirmwarePlatform):
 
     def generate_ide_project(self, env, project_path: str, source_files: list[str]):
         env.AlwaysBuild(env.MplabxNbproject(
-            env.Dir(project_path), 
-            self.mplab_configurations, 
+            env.Dir(project_path),
+            self.mplab_configurations,
             source_files=source_files))
 
 ALL_PLATFORMS: list[AbstractFirmwarePlatform] = [
     NativePlatform(),
+    PIC16F18876Platform(),
     PIC18F46K42Platform(),
 ]
